@@ -1,6 +1,6 @@
 # Kill Tony Hooks for Claude Code
 
-Sound effects inspired by [Kill Tony](https://www.youtube.com/killtony) for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). A kitten meows when things go right. A West Hollywood bear growls when things go wrong.
+Sound effects inspired by [Kill Tony](https://www.youtube.com/killtony) for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). A kitten meows when a task completes. A West Hollywood bear growls when Claude needs your attention.
 
 > **macOS only** -- uses `afplay` for audio playback. No dependencies beyond Node.js.
 
@@ -8,11 +8,9 @@ Sound effects inspired by [Kill Tony](https://www.youtube.com/killtony) for [Cla
 
 | Sound | Event | When it plays |
 |-------|-------|---------------|
-| Kitten meow | `SubagentStop` | A subagent finishes its work |
-| Kitten meow | `PostToolUse` | A task is marked completed |
-| Kitten meow | `PreCompact` | Context compaction triggers |
-| Bear growl | `SessionStart` | A new conversation begins |
-| Bear growl | `PostToolUse` | A tool returns an error, denial, or failure |
+| Kitten meow | `TaskCompleted` | A task is marked completed |
+| Bear growl | `PermissionRequest` | Claude is waiting for you to approve/deny something |
+| Bear growl | `PostToolUse` | Claude asks you a question (`AskUserQuestion`) |
 
 ## Quick Start
 
@@ -32,56 +30,42 @@ Add these entries to the `"hooks"` object in your settings file:
 ```jsonc
 {
   "hooks": {
-    // Add bear growl to SessionStart
-    "SessionStart": [
+    // Kitten meow when a task completes
+    "TaskCompleted": [
       {
         "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "CLAUDE_HOOK_EVENT=SessionStart node ~/.claude/hooks/kill-tony-sounds.mjs",
+            "command": "CLAUDE_HOOK_EVENT=TaskCompleted node ~/.claude/hooks/kill-tony-sounds.mjs",
             "timeout": 1000
           }
         ]
       }
     ],
 
-    // Add kitten meow to SubagentStop
-    "SubagentStop": [
+    // Bear growl when Claude needs permission
+    "PermissionRequest": [
       {
         "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "CLAUDE_HOOK_EVENT=SubagentStop node ~/.claude/hooks/kill-tony-sounds.mjs",
+            "command": "CLAUDE_HOOK_EVENT=PermissionRequest node ~/.claude/hooks/kill-tony-sounds.mjs",
             "timeout": 1000
           }
         ]
       }
     ],
 
-    // Add both sounds to PostToolUse (kitten on task complete, bear on errors)
+    // Bear growl when Claude asks a question
     "PostToolUse": [
       {
-        "matcher": "",
+        "matcher": "AskUserQuestion",
         "hooks": [
           {
             "type": "command",
             "command": "node ~/.claude/hooks/kill-tony-sounds.mjs",
-            "timeout": 1000
-          }
-        ]
-      }
-    ],
-
-    // Add kitten meow to PreCompact
-    "PreCompact": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "CLAUDE_HOOK_EVENT=PreCompact node ~/.claude/hooks/kill-tony-sounds.mjs",
             "timeout": 1000
           }
         ]
@@ -101,9 +85,8 @@ The hooks take effect on the next session.
 
 The script reads Claude Code hook environment variables to decide which sound to play:
 
-- **`CLAUDE_HOOK_EVENT`** -- set manually in the command for `SessionStart`, `SubagentStop`, and `PreCompact` hooks
-- **`CLAUDE_TOOL_NAME`** + **`CLAUDE_TOOL_INPUT`** -- checked on `PostToolUse` to detect task completions
-- **`CLAUDE_TOOL_RESULT`** -- checked on `PostToolUse` for error keywords (`error`, `denied`, `cancelled`, `failed`)
+- **`CLAUDE_HOOK_EVENT`** -- set manually in the command for `TaskCompleted` and `PermissionRequest` hooks
+- **`CLAUDE_TOOL_NAME`** -- checked on `PostToolUse` to detect `AskUserQuestion` calls
 
 Sounds play via `afplay` in a detached child process so they never block Claude's execution.
 
@@ -113,8 +96,8 @@ Replace the MP3 files in `~/.claude/hooks/sounds/`:
 
 ```
 ~/.claude/hooks/sounds/
-  kitten-final.mp3   # plays on success
-  bear-final.mp3     # plays on errors + session start
+  kitten-final.mp3   # plays on task completion
+  bear-final.mp3     # plays when Claude needs attention
 ```
 
 Any MP3 works. Keep clips short (1-3 seconds) for the best drop timing.
@@ -125,8 +108,8 @@ Any MP3 works. Keep clips short (1-3 seconds) for the best drop timing.
 kill-tony-hooks/
   kill-tony-sounds.mjs       # hook script
   sounds/
-    kitten-final.mp3          # kitten meow (success)
-    bear-final.mp3            # bear growl (errors + session start)
+    kitten-final.mp3          # kitten meow (task complete)
+    bear-final.mp3            # bear growl (needs attention)
   README.md
 ```
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 // Kill Tony sound effects for Claude Code hooks
-// Kitten meow: task completed, subagent finished
-// Bear growl: tool denied or failed/cancelled
+// Kitten meow: task completed
+// Bear growl: needs your attention (permission request or question)
 
 import { spawn } from "child_process";
 import { resolve } from "path";
@@ -22,62 +22,20 @@ function play(file) {
 
 const hookEvent = process.env.CLAUDE_HOOK_EVENT || "";
 const toolName = process.env.CLAUDE_TOOL_NAME || "";
-const toolInput = process.env.CLAUDE_TOOL_INPUT || "";
-const toolResult = process.env.CLAUDE_TOOL_RESULT || "";
 
-// Bear: conversation starting
-if (hookEvent === "SessionStart") {
+// Kitten: task completed
+if (hookEvent === "TaskCompleted") {
+  play(KITTEN);
+  process.exit(0);
+}
+
+// Bear: permission request (waiting for approve/deny)
+if (hookEvent === "PermissionRequest") {
   play(BEAR);
   process.exit(0);
 }
 
-// Kitten: subagent finished
-if (hookEvent === "SubagentStop") {
-  play(KITTEN);
-  process.exit(0);
-}
-
-// Kitten: compaction complete
-if (hookEvent === "PreCompact") {
-  play(KITTEN);
-  process.exit(0);
-}
-
-// Kitten: task marked completed
-if (toolName === "TaskUpdate") {
-  try {
-    const input = JSON.parse(toolInput);
-    if (input.status === "completed") {
-      play(KITTEN);
-      process.exit(0);
-    }
-  } catch {}
-}
-
-// Bear: tool errors, failures, or cancellations
-if (toolResult) {
-  try {
-    const result = JSON.parse(toolResult);
-    const resultStr = JSON.stringify(result).toLowerCase();
-    if (
-      resultStr.includes('"error"') ||
-      resultStr.includes("denied") ||
-      resultStr.includes("cancelled") ||
-      resultStr.includes("canceled") ||
-      resultStr.includes("permission denied") ||
-      resultStr.includes("failed")
-    ) {
-      play(BEAR);
-    }
-  } catch {
-    const lower = toolResult.toLowerCase();
-    if (
-      lower.includes("error") ||
-      lower.includes("denied") ||
-      lower.includes("cancelled") ||
-      lower.includes("failed")
-    ) {
-      play(BEAR);
-    }
-  }
+// Bear: asking user a question
+if (toolName === "AskUserQuestion") {
+  play(BEAR);
 }
